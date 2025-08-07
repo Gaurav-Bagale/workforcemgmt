@@ -97,10 +97,18 @@ public class TaskManagementServiceImpl implements TaskManagementService {
             // Instead, it reassigns ALL of them.
 
             if (!tasksOfType.isEmpty()) {
-                for (TaskManagement taskToUpdate : tasksOfType) {
-                    taskToUpdate.setAssigneeId(request.getAssigneeId());
-                    taskRepository.save(taskToUpdate);
+                // Assign one
+                TaskManagement taskToAssign = tasksOfType.get(0);
+                taskToAssign.setAssigneeId(request.getAssigneeId());
+                taskToAssign.setStatus(TaskStatus.ASSIGNED);
+                taskRepository.save(taskToAssign);
+                // Cancel the rest
+                for (int i = 1; i < tasksOfType.size(); i++) {
+                    TaskManagement taskToCancel = tasksOfType.get(i);
+                    taskToCancel.setStatus(TaskStatus.CANCELLED);
+                    taskRepository.save(taskToCancel);
                 }
+
             } else {
                 // Create a new task if none exist
                 TaskManagement newTask = new TaskManagement();
@@ -112,7 +120,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                 taskRepository.save(newTask);
             }
         }
-        return "Tasks assigned successfully for reference " + request.getReferenceId();
+        return "One Tasks assigned successfully Other cancelled for reference " + request.getReferenceId();
     }
 
     @Override
