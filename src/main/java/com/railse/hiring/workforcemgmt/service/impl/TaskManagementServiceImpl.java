@@ -3,14 +3,18 @@ import com.railse.hiring.workforcemgmt.common.exception.ResourceNotFoundExceptio
 import com.railse.hiring.workforcemgmt.dto.*;
 import com.railse.hiring.workforcemgmt.mapper.ITaskManagementMapper;
 import com.railse.hiring.workforcemgmt.model.TaskManagement;
+import com.railse.hiring.workforcemgmt.model.enums.Priority;
 import com.railse.hiring.workforcemgmt.model.enums.Task;
 import com.railse.hiring.workforcemgmt.model.enums.TaskStatus;
 import com.railse.hiring.workforcemgmt.repository.TaskRepository;
 import com.railse.hiring.workforcemgmt.service.TaskManagementService;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
 
 @Service
 public class TaskManagementServiceImpl implements TaskManagementService {
@@ -123,22 +127,47 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         return "One Tasks assigned successfully Other cancelled for reference " + request.getReferenceId();
     }
 
+    //feature 1
+    //change code for the implement the feature Smart Daily Task View it include filter active task in range
     @Override
     public List<TaskManagementDto> fetchTasksByDate(TaskFetchByDateRequest request) {
-
         List<TaskManagement> tasks = taskRepository.findByAssigneeIdIn(request.getAssigneeIds());
-        // BUG #2 is here. It should filter out CANCELLED tasks but doesn't.
+
+        long start = request.getStartDate();
+        long end = request.getEndDate();
         List<TaskManagement> filteredTasks = tasks.stream()
+                .filter(task -> task.getStatus() != TaskStatus.CANCELLED)
                 .filter(task -> {
-                    boolean isActive = task.getStatus() != TaskStatus.CANCELLED;
-                    boolean isWithinDateRange = task.getTaskDeadlineTime() >= request.getStartDate()
-                            && task.getTaskDeadlineTime() <= request.getEndDate();
-                    return isActive && isWithinDateRange;
+                    long deadline = task.getTaskDeadlineTime();
+                    return (deadline >= start && deadline <= end) ||
+                            (deadline < start && task.getStatus() != TaskStatus.COMPLETED);
                 })
                 .collect(Collectors.toList());
 
         return taskMapper.modelListToDtoList(filteredTasks);
     }
+
+    //feature 2
+    //implement update task by priority for manager
+    @Override
+    public TaskManagementDto updateTaskPriority(UpdateTaskPriority request){
+
+        TaskManagement task=taskRepository.findById(request.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Task is not found by this Id "+request.getId()));
+        task.setPriority(request.getPriority());
+        return taskMapper.modelToDto(taskRepository.save(task));
+    }
+
+    //implement fetchByPriority
+    @Override
+    public List<TaskManagementDto> fetchByPriority(Priority priority){
+        List<TaskManagement> tasks = taskRepository.findAll().stream()
+                .filter(task -> task.getPriority()==priority)
+                .collect(Collectors.toList());
+        return taskMapper.modelListToDtoList(tasks);
+    }
+
+
 }
 
 
